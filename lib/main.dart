@@ -37,44 +37,54 @@ void renderApp(Application app) {
 
 class Application {
   void frame() {
-    xVel += (circle2Pos.dx - circlePos.dx) / 1000;
-    yVel += (circle2Pos.dy - circlePos.dy) / 1000;
-    //xVel2 += (circlePos.dx - circle2Pos.dx).sign / 10;
-    //yVel2 += (circlePos.dy - circle2Pos.dy).sign / 10;
-    circlePos += Offset(xVel, 0);
-    circlePos += Offset(0, yVel);
+    Offset offset = circle2Pos - circlePos;
+    if (offset != Offset.zero) {
+      velocity += (offset * 10000) / (offset.distance * offset.distanceSquared);
+      velocity2 -=
+          (offset / 10000) / (offset.distance * offset.distanceSquared);
+    }
+    circlePos += velocity;
 
-    circle2Pos += Offset(xVel2, 0);
-    circle2Pos += Offset(0, yVel2);
+    circle2Pos += velocity2;
     renderApp(this);
   }
 
-  double yVel = 0;
-  double xVel = 0;
-  double yVel2 = 10;
-  double xVel2 = 0;
-  Offset circlePos = const Offset(0, 0);
-  Offset circle2Pos = const Offset(0, 0);
+  Offset velocity = const Offset(0, 0);
+  Offset velocity2 = const Offset(0, 0);
+  Offset circlePos = Offset.zero;
+  Offset circle2Pos = Offset.zero;
+  Offset? startDragPos;
+  late Offset currentMousePos;
+  Offset get originInSC =>
+      window.physicalSize.center(Offset.zero) - circle2Pos;//(circle2Pos + (circlePos - circle2Pos) / 2);
   void render(Canvas cv) {
+    cv.drawCircle(originInSC, 15, Paint()..color=const Color(0xFFFFFF00));
+    cv.drawCircle(originInSC+circle2Pos+(circlePos-circle2Pos)/2, 15, Paint()..color=const Color(0xFFFFFFFF));
     cv.drawCircle(
-      (circlePos - circle2Pos) + window.physicalSize.center(Offset.zero),
+      circlePos + originInSC,
       20,
       Paint()..color = const Color(0xFF00FF00),
     );
     cv.drawCircle(
-      window.physicalSize.center(Offset.zero),
+      circle2Pos + originInSC,
       20,
       Paint()..color = const Color(0xFFFF0000),
     );
+    if(startDragPos != null) {
+    cv.drawLine(startDragPos!, currentMousePos, Paint()..color = const Color(0xFFFFFFFF));
+    cv.drawCircle(startDragPos!, 20, Paint()..color = const Color(0x7700FF00));
+    }
   }
 
   void handlePointerEvent(PointerEvent event) {
-    if (event.isPointerDown) {
-      circlePos = (event.position - window.physicalSize.center(Offset.zero)) +
-          circle2Pos;
-      yVel = 0;
-      xVel = 0;
-      renderApp(this);
+    if (event.isClickStart) {
+      startDragPos = event.position;
+    }
+    currentMousePos = event.position;
+    if(event.isClickEnd) {
+      circlePos = startDragPos! - originInSC;
+      velocity = currentMousePos - startDragPos!;
+      startDragPos = null;
     }
   }
 }
